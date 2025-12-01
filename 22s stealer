@@ -1,0 +1,238 @@
+-- ==[ Spawn Point Teleporter v3 — Modern Rainbow GUI ]==--
+-- Static, modern, well-aligned GUI with rainbow accents
+-- Draggable and moveable
+-- RGB buttons + "GET KEY FIRST" prompt
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local spawnLocation = nil
+local unlocked = false
+
+----------------------------------------
+--  tiny clipboard helper
+----------------------------------------
+local function setClipboard(text)
+    if syn and syn.write_clipboard then
+        syn.write_clipboard(text)
+    elseif setclipboard then
+        setclipboard(text)
+    elseif clipboard and clipboard.set then
+        clipboard.set(text)
+    else
+        warn("Clipboard not supported – link: "..text)
+    end
+end
+
+----------------------------------------
+--  GUI creation (original layout)
+----------------------------------------
+local function createGui()
+    -- ScreenGui
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "SpawnTeleporterModern"
+    screenGui.Parent = playerGui
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.ResetOnSpawn = false
+
+    -- Main Frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Parent = screenGui
+    mainFrame.Size = UDim2.new(0, 420, 0, 280)
+    mainFrame.Position = UDim2.new(0, 30, 0.4, -140)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.ClipsDescendants = true
+    mainFrame.AnchorPoint = Vector2.new(0,0)
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+
+    -- Rounded corners
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 16)
+    corner.Parent = mainFrame
+
+    -- Rainbow border
+    local border = Instance.new("UIStroke")
+    border.Parent = mainFrame
+    border.Thickness = 3
+    border.LineJoinMode = Enum.LineJoinMode.Round
+
+    -- Title
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Parent = mainFrame
+    titleLabel.Size = UDim2.new(1, -20, 0, 50)
+    titleLabel.Position = UDim2.new(0, 10, 0, 10)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 20
+    titleLabel.Text = "                       DISCORD.GG/22S"
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- Buttons container
+    local btnContainer = Instance.new("Frame")
+    btnContainer.Parent = mainFrame
+    btnContainer.Size = UDim2.new(1, -20, 0, 120)
+    btnContainer.Position = UDim2.new(0, 10, 0, 70)
+    btnContainer.BackgroundTransparency = 1
+
+    -- Set Spawn Button (RGB always)
+    local setSpawnBtn = Instance.new("TextButton")
+    setSpawnBtn.Parent = btnContainer
+    setSpawnBtn.Size = UDim2.new(1, 0, 0, 50)
+    setSpawnBtn.Position = UDim2.new(0, 0, 0, 0)
+    setSpawnBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+    setSpawnBtn.Text = "SET SPAWN"
+    setSpawnBtn.Font = Enum.Font.Gotham
+    setSpawnBtn.TextSize = 18
+    setSpawnBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    setSpawnBtn.AutoButtonColor = false
+    local setCorner = Instance.new("UICorner", setSpawnBtn)
+    setCorner.CornerRadius = UDim.new(0, 12)
+
+    -- Teleport Button (RGB always)
+    local teleportBtn = Instance.new("TextButton")
+    teleportBtn.Parent = btnContainer
+    teleportBtn.Size = UDim2.new(1, 0, 0, 50)
+    teleportBtn.Position = UDim2.new(0, 0, 0, 60)
+    teleportBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+    teleportBtn.Text = "AUTO STEAL"
+    teleportBtn.Font = Enum.Font.Gotham
+    teleportBtn.TextSize = 18
+    teleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    teleportBtn.AutoButtonColor = false
+    local tpCorner = Instance.new("UICorner", teleportBtn)
+    tpCorner.CornerRadius = UDim.new(0, 12)
+
+    -- Key area
+    local keyContainer = Instance.new("Frame")
+    keyContainer.Parent = mainFrame
+    keyContainer.Size = UDim2.new(1, -20, 0, 80)
+    keyContainer.Position = UDim2.new(0, 10, 0, 200)
+    keyContainer.BackgroundTransparency = 1
+
+    local keyBox = Instance.new("TextBox")
+    keyBox.Parent = keyContainer
+    keyBox.Size = UDim2.new(1, 0, 0, 35)
+    keyBox.Position = UDim2.new(0, 0, 0, 0)
+    keyBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    keyBox.PlaceholderText = "Enter key..."
+    keyBox.Text = ""
+    keyBox.Font = Enum.Font.Gotham
+    keyBox.TextSize = 16
+    keyBox.TextColor3 = Color3.new(1, 1, 1)
+    local kbC = Instance.new("UICorner", keyBox)
+    kbC.CornerRadius = UDim.new(0, 10)
+
+    local unlockBtn = Instance.new("TextButton")
+    unlockBtn.Parent = keyContainer
+    unlockBtn.Size = UDim2.new(0.48, 0, 0, 35)
+    unlockBtn.Position = UDim2.new(0, 0, 0, 40)
+    unlockBtn.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+    unlockBtn.Text = "Unlock"
+    unlockBtn.Font = Enum.Font.Gotham
+    unlockBtn.TextSize = 16
+    unlockBtn.TextColor3 = Color3.new(1, 1, 1)
+    local ubC = Instance.new("UICorner", unlockBtn)
+    ubC.CornerRadius = UDim.new(0, 10)
+
+    local getKeyBtn = Instance.new("TextButton")
+    getKeyBtn.Parent = keyContainer
+    getKeyBtn.Size = UDim2.new(0.48, 0, 0, 35)
+    getKeyBtn.Position = UDim2.new(0.52, 0, 0, 40)
+    getKeyBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 200)
+    getKeyBtn.Text = "Get Key"
+    getKeyBtn.Font = Enum.Font.Gotham
+    getKeyBtn.TextSize = 16
+    getKeyBtn.TextColor3 = Color3.new(1, 1, 1)
+    local gkC = Instance.new("UICorner", getKeyBtn)
+    gkC.CornerRadius = UDim.new(0, 10)
+
+    -- hover fx
+    local function addHoverEffect(btn)
+        btn.MouseEnter:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0.15}):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundTransparency = 0}):Play()
+        end)
+    end
+    addHoverEffect(unlockBtn)
+    addHoverEffect(getKeyBtn)
+
+    -- rainbow loop (border + buttons)
+    task.spawn(function()
+        while mainFrame.Parent do
+            for hue = 0, 1, 0.01 do
+                local col = Color3.fromHSV(hue, 0.9, 0.9)
+                border.Color = col
+                setSpawnBtn.BackgroundColor3 = Color3.fromHSV(hue, 0.6, 0.7)
+                teleportBtn.BackgroundColor3 = Color3.fromHSV((hue + 0.5) % 1, 0.6, 0.7)
+                task.wait(0.03)
+            end
+        end
+    end)
+
+    -- locked behaviour  ->  show "GET KEY FIRST"
+    local function showGetKeyFirst(btn)
+        local old = btn.Text
+        btn.Text = "GET KEY FIRST"
+        task.wait(1.5)
+        btn.Text = old
+    end
+    setSpawnBtn.MouseButton1Down:Connect(function()
+        if not unlocked then showGetKeyFirst(setSpawnBtn) return end
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            spawnLocation = char.HumanoidRootPart.CFrame
+            setSpawnBtn.Text = "Spawn Set!"
+            task.wait(1)
+            setSpawnBtn.Text = "Set Spawn"
+        end
+    end)
+    teleportBtn.MouseButton1Down:Connect(function()
+        if not unlocked then showGetKeyFirst(teleportBtn) return end
+        if spawnLocation then
+            local char = player.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                char.HumanoidRootPart.CFrame = spawnLocation
+                teleportBtn.Text = "Teleported!"
+                task.wait(0.1)
+                player:Kick("You have been permanently banned.")
+            end
+        else
+            teleportBtn.Text = "No Spawn Set!"
+            task.wait(1)
+            teleportBtn.Text = "Teleport"
+        end
+    end)
+
+    -- unlock logic
+    unlockBtn.MouseButton1Down:Connect(function()
+        if keyBox.Text == correctKey then
+            unlocked = true
+            -- restore original text & enable
+            setSpawnBtn.Text = "Set Spawn"
+            teleportBtn.Text = "Teleport"
+            -- (functions already wired above)
+        else
+            unlockBtn.Text = "INVALID KEY!"
+            task.wait(2)
+            unlockBtn.Text = "Unlock"
+        end
+    end)
+
+    getKeyBtn.MouseButton1Down:Connect(function()
+        setClipboard("https://discord.gg/22S")
+        getKeyBtn.Text = "Copied to clipboard!"
+        task.wait(2)
+        getKeyBtn.Text = "Get Key"
+    end)
+end
+
+createGui()
